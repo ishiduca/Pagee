@@ -60,7 +60,7 @@ get '/:name' => sub {
 
     file_search(sub {
         my $path = shift;
-        if (-f $path && $path =~ m{.+\.(jpg|png|gif)$}i) {
+        if (-f $path && $path =~ m{.+\.(jp(e)?g|png|gif)$}i) {
             $path =~ s/^public//;
             push @images_path, $path;
         }
@@ -75,7 +75,6 @@ get '/:name' => sub {
         ],
         js          => [
             '/js/lib.js',
-            '/js/slide.js',
             '/js/page.js',
         ],
         images_path => [ @images_path ],

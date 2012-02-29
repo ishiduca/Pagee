@@ -1,51 +1,121 @@
 addEvent(window, 'load', function () {
-    var fade, slide,
-        _next, _prev, _auto;
-    
-    fade  = new Effect;
+    var focus = 0,
+        imgs  = tags(gid('main_ul'), 'img'),
+        last  = imgs.length - 1,
+        pagingFadeInterval = 25,
+        pagingFadePitch    = .05;
 
-    fade.onFocus = function (node) {
-                    fade.fadeIn(node, 0.05, 20);
-                    return this;
-    };
-    fade.outFocus = function (node) {
-                    fade.fadeOut(node, 0.05, 20);
-                    return this;
+    var paging = function () {
+                var guard = false;
+
+                return function (now, next) {
+                        if (guard === false && now && next) {
+                                var nowStyle    = now.style,
+                                    nextStyle   = next.style,
+                                    nowOpacity  = 1,
+                                    nextOpacity = 0,
+
+                                help = function () {
+                                    setOpacity(now,  nowOpacity  -= pagingFadePitch);
+                                    setOpacity(next, nextOpacity += pagingFadePitch);
+                                },
+
+                                fade = function () {
+                                    var intervalID = setInterval(function () {
+                                        if (nowOpacity < 0) {
+                                            setOpacity(now,  0);
+                                            setOpacity(next, 1);
+
+                                            nowStyle.visibility  = 'hidden';
+                                            nowStyle.zIndex      = 1;
+
+                                            clearInterval(intervalID);
+
+                                            guard = false;
+                                            //fade  = undefined;
+                                        }
+                                        help();
+                                    }, pagingFadeInterval);
+                                };
+
+                                guard = true;
+
+                                nextStyle.visibility = 'visible';
+                                nextStyle.zIndex     = 10;
+
+                                help();
+                                fade();
+
+                                return true;
+                        }
+                        return false;
+                };
+    }();
+
+    var imgsInit = function (img, i) {
+        var style        = img.style;
+        style.position   = 'fixed';
+        style.top        = 0;
+        style.zIndex     = (i === 0) ? 10 : 1;
+        style.visibility = (i === 0) ? 'visibility' : 'hidden';
+
+        addEvent(img, 'click', function (n) {
+            return function () {
+                if (paging(img, imgs[ (n === last) ? 0 : n + 1 ])) {
+                    focus = (n === last) ? 0 : n + 1;
+                }
+            };        
+        }(i));
     };
 
-    _next = function () { slide.next(); };
-    _prev = function () { slide.prev(); };
-    _auto = function () {
-        if ('auto' in slide) {
-            slide.autoPagingStop();
-        } else {
-            slide.autoPagingStart(2000);
+    var _windowOnResize = function () {
+        var _browserHeight = getBrowserHeight(),
+            _browserWidth  = getBrowserWidth();
+
+        foreach(imgs, function (img, i) {
+            if (imgsInit) imgsInit(img, i);
+            img.setAttribute('height', _browserHeight + 'px');
+            img.style.left = Math.round((_browserWidth - img.width) / 2) + "px";
+        });
+
+        imgsInit = undefined;
+    };
+
+    var pagingNext = function () {
+        if (paging(imgs[focus], imgs[ (focus === last) ? 0 : focus + 1 ])) {
+            focus = (focus === last) ? 0 : focus + 1;
         }
     };
-    _toIndex = function () { document.location = '/'; };
-
-    slide = new Slide({
-        pages  : tags(gid('main_ul'), 'img'),
-        effect : fade,
-
-        hotkeys : {
-            "j"     : _next,
-            "left"  : _next,
-            "k"     : _prev,
-            "right" : _prev,
-            'space' : _auto,
-            "u"     : _toIndex,
+    var pagingPrev = function () {
+        if (paging(imgs[focus], imgs[ (focus === 0) ? last : focus - 1 ])) {
+            focus = (focus === 0) ? last : focus - 1;
         }
-    });
+    };
+    var autoPaging = function () {
+        var _on_off;
+        return function () {
+            if (_on_off) {
+                clearInterval(_on_off);
+                _on_off = undefined;
+            } else {
+                _on_off = setInterval(pagingNext, 2000);
+                setTimeout(pagingNext, 250);
+            }
+        };
+    }();
 
-    slide.addEventListener(window,      'resize', function () { slide.allPagesResize(); })
-         .addEventListener(gid('next'), 'click',  _next)
-         .addEventListener(gid('prev'), 'click',  _prev)
-         .addEventListener(gid('auto'), 'click',  _auto)
-         .addEventListener(gid('navi_toIndex'), 'click',  _toIndex)
-         .onPageClick('next') 
-         .allPagesResize()
+    var kb = new Hotkey;
 
-    ;
+    kb.add('j', pagingNext).add('k', pagingPrev).add('space', autoPaging).add('u', function () { document.location = '/'; });
+
+    addEvent(gid('prev'), 'click', pagingPrev);
+    addEvent(gid('next'), 'click', pagingNext);
+    addEvent(gid('auto'), 'click', autoPaging);
+    addEvent(window, 'resize', _windowOnResize);
+
+    _windowOnResize();
 
 }, false);
+
+1;
+
