@@ -1,0 +1,14 @@
+<!doctype html>
+<head>
+<meta charset="<% settings.charset %>" />
+<% FOREACH href = stylesheet %><link rel="stylesheet" href="<% href %>" />
+<% END %>
+<% FOREACH src = js %>
+<script src="<% src %>"></script>
+<% END %>
+<title>Pagee: <% title %></title>
+</head>
+<body>
+<% content %>
+</body>
+

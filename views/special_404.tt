@@ -1,0 +1,7 @@
+<h1>404: page not found.</h1>
+<div id="main">
+    <p>&quot;<% path %>&quot; not found.</p>
+</div>
+<div id="foot">
+    go to <a href="/">Pagee: index</a>
+</div>

@@ -1,0 +1,13 @@
+<div id="navi">
+    <a id="navi_toIndex" class="navi_parts" href="/"><kbd class="key">u</kbd> ↑</a>
+    <a id="next"         class="navi_parts" href="javascript:void(0);"><kbd class="key">j</kbd> next</a>
+    <a id="prev"         class="navi_parts" href="javascript:void(0);"><kbd class="key">k</kbd> prev</a>
+    <a id="auto"         class="navi_parts" href="javascript:void(0);"><kbd class="key">space</kbd> auto</a>
+</div>
+
+<div id="main">
+    <ul id="main_ul"><% FOREACH img_src = images_path %>
+        <li class="main_ul_lis"><img class="main_ul_lis_img" src="<% img_src %>" /></li><% END %>
+    </ul>
+</div>
+
