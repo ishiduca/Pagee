@@ -1,56 +1,69 @@
-addEvent(window, 'load', function () {
-    var config = {
-        imgs       : tags(gid('main_ul'), 'img'),
-        pagingFade : {
-            interval : 25,
-            pitch    : .05
-        },
-        autoPager  : {
-            interval : 2200,
-            delay    : 250
-        }
-    };
+function resizer (config) {
+            var init = function (img, i) {
+                        var style = img.style;
 
-    var paging = function (imgs, pagingFade) {
+                        style.position   = 'fixed';
+                        style.top        = 0;
+                        style.zIndex     = (i === 0) ? 10 : 0;
+                        style.visibility = (i === 0) ? 'visible' : 'hidden';
+            };
+
+            return function () {
+                        var _browserHeight = getBrowserHeight(),
+                            _browserWidth  = getBrowserWidth();
+
+                        foreach(config.imgs, function (img, i) {
+                            if (init) init(img, i);
+
+                            img.setAttribute('height', _browserHeight);
+                            img.style.left = Math.round((_browserWidth - img.width) / 2) + "px";
+                        });
+
+                        init = undefined;
+            };
+}
+function pager (config) {
             var lock  = false,
                 focus = 0,
-                last  = imgs.length - 1;
+                last  = config.imgs.length - 1;
+            
+            fade = function () {};
 
             return function (getNextFocus, nowFocus) {
-                    if (isUndefined(nowFocus)) nowFocus = focus;
+                        if (isUndefined(nowFocus)) nowFocus = focus;
 
-                    var now       = imgs[nowFocus],
-                        nextFocus = getNextFocus(nowFocus, last),
-                        next      = imgs[nextFocus];
+                        var now       = config.imgs[nowFocus],
+                            nextFocus = getNextFocus(nowFocus, last),
+                            next      = config.imgs[nextFocus];
 
-                    if (lock === false && now && next) {
+                        if ((! lock) && now && next) {
                             var nowStyle    = now.style,
                                 nextStyle   = next.style,
                                 nowOpacity  = 1,
                                 nextOpacity = 0,
-
+                            
                             help = function () {
-                                setOpacity(now,  nowOpacity  -= pagingFade.pitch);
-                                setOpacity(next, nextOpacity += pagingFade.pitch);
+                                        setOpacity(now,  nowOpacity  -= config.pagingFade.pitch);
+                                        setOpacity(next, nextOpacity += config.pagingFade.pitch);
                             },
-
+                        
                             fade = function () {
-                                var intervalID = setInterval(function () {
-                                    if (nowOpacity < 0) {
-                                        setOpacity(now,  0);
-                                        setOpacity(next, 1);
+                                        var intervalID = setInterval(function () {
+                                                    if (nowOpacity < 0) {
+                                                        setOpacity(now,  0);
+                                                        setOpacity(next, 1);
 
-                                        nowStyle.visibility  = 'hidden';
-                                        nowStyle.zIndex      = 1;
+                                                        nowStyle.visibility = 'hidden';
+                                                        nowStyle.zIndex     = 0;
 
-                                        clearInterval(intervalID);
+                                                        clearInterval(intervalID);
 
-                                        lock = false;
-                                        focus = nextFocus;
-                                        //fade  = undefined;
-                                    }
-                                    help();
-                                }, pagingFade.interval);
+                                                        lock = false;
+                                                        focus = nextFocus;
+                                                    }
+
+                                                    help();
+                                            }, config.pagingFade.interval);
                             };
 
                             lock = true;
@@ -60,72 +73,78 @@ addEvent(window, 'load', function () {
 
                             help();
                             fade();
-                    }
+                        }
             };
+}
 
-    }(config.imgs, config.pagingFade);
+addEvent(window, 'load', function () {
 
-    var imgsInit = function (img, i) {
-        var style        = img.style;
-        style.position   = 'fixed';
-        style.top        = 0;
-        style.zIndex     = (i === 0) ? 10 : 1;
-        style.visibility = (i === 0) ? 'visibility' : 'hidden';
+var config, resise, paging, kb,
+    _next, _prev, _auto;
 
-        addEvent(img, 'click', function () {
-            paging(function (now, last) {
-                return (now === last) ? 0 : now + 1;
-            }, i);
-        });
-    };
+config = {
+    imgs       : tags(gid('main_ul'), 'img'),
+    pagingFade : {
+        interval   : 25,
+        pitch      : .05
+    },
+    autoPager  : {
+        interval   : 2200,
+        startDelay : 250
+    }
+};
 
-    var _windowOnResize = function (imgs) {
-        var _browserHeight = getBrowserHeight(),
-            _browserWidth  = getBrowserWidth();
 
-        foreach(imgs, function (img, i) {
-            if (imgsInit) imgsInit(img, i);
-            img.setAttribute('height', _browserHeight + 'px');
-            img.style.left = Math.round((_browserWidth - img.width) / 2) + "px";
-        });
+resize = resizer(config);
+paging = pager(config);
+kb     = new Hotkey;
 
-        imgsInit = undefined;
-    };
 
-    var pagingNext = function () {
-        paging(function (now, last) {
-            return (now === last) ? 0 : now + 1;
-        });
-    };
-    var pagingPrev = function () {
-        paging(function (now, last) {
-            return (now === 0) ? now = last : now - 1;
-        });
-    };
-    var autoPaging = function (setting) {
-        var _on_off;
+_next = function () {
+    paging(function (now, last) {
+        return (now === last) ? 0 : now + 1;
+    });
+};
+_prev = function () {
+    paging(function (now, last) {
+        return (now === 0) ? last : now - 1;
+    });
+};
+_auto = function () {
+        var _on_off = false;
+
         return function () {
             if (_on_off) {
                 clearInterval(_on_off);
                 _on_off = undefined;
             } else {
-                _on_off = setInterval(pagingNext, setting.interval);
-                setTimeout(pagingNext, setting.delay);
+                _on_off = setInterval(_next, config.autoPager.interval);
+                setTimeout(_next, config.autoPager.startDelay);
             }
         };
-    }(config.autoPager);
+}();
 
-    var kb = new Hotkey;
 
-    kb.add('j', pagingNext).add('k', pagingPrev).add('space', autoPaging)
-      .add('u', function () { document.location = gid('navi_toIndex').href; });
 
-    addEvent(gid('prev'), 'click', pagingPrev);
-    addEvent(gid('next'), 'click', pagingNext);
-    addEvent(gid('auto'), 'click', autoPaging);
-    addEvent(window, 'resize',function () { _windowOnResize(config.imgs); });
+addEvent(gid('next'), 'click', _next);
+addEvent(gid('prev'), 'click', _prev);
+addEvent(gid('auto'), 'click', _auto);
 
-    _windowOnResize(config.imgs);
+foreach(config.imgs, function (img, i) {
+    addEvent(img, 'click', function () {
+        paging(function (now, last) {
+            return (now === last) ? 0 : now + 1;
+        }, i);
+    });
+});
+
+kb.add('u', function () { document.location = gid('navi_toIndex').href; })
+  .add('j', _next).add('k', _prev).add('space', _auto)
+;
+
+addEvent(window, 'resize', resize);
+
+resize();
 
 }, false);
 
