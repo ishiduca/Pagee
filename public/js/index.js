@@ -4,8 +4,6 @@ function Revolver (data) {
     this.dom          = _dom = data.dom;
     this.scroll       = data.scroll;
     this.dom.listLast = tags(_dom.list, 'li').length - 1;
-    if ('onSelect' in data && typeof data.onSelect === "function")
-        this.onSelect = data.onSelect;
 
     var that = this;
     addEvent(window, 'resize', function () { that.onResize(); });
@@ -21,8 +19,8 @@ function Revolver (data) {
                     var dom      = this.dom,
                         domWidth = this.browserWidth - (this.dom.widthMargin * 2);
 
-                    foreach(qw("list focus"), function (domid) {
-                        dom[domid].style.width = domWidth + "px";
+                    foreach(qw('list focus'), function (domid) {
+                        dom[domid].style.width = domWidth + 'px';
                     });
 
                     return this;
@@ -73,13 +71,18 @@ function Revolver (data) {
 
                     _pos = _pos || 0;
 
-                    _dom.list.style.top = (_dom.defaultTop - _pos) + "px";
+                    _dom.list.style.top = (_dom.defaultTop - _pos) + 'px';
 
                     return this;
     };
-    rp.onSelect = function () {
+    rp.onSelect = function (func) {
                     var link = tags(this.dom.list, 'a')[this.focus];
-                    document.location = link.href;
+
+                    if ((! isUndefined(func)) && typeof func === 'function') {
+                        func(link, focus);
+                    } else {
+                        document.location = link.href;
+                    }
 
                     return this;
     };
@@ -100,17 +103,6 @@ addEvent(window, 'load', function () {
             scroll : {
                 pitch    : 6,
                 interval : 20
-            },
-            onSelect : function () {
-                        var link = tags(this.dom.list, 'a')[this.focus];
-
-                        link.style.color = '#ffaa33';
-
-                        setTimeout(function () {
-                            document.location = link.href;
-                        }, 250);
-
-                        return this;
             }
         });
 
@@ -123,14 +115,19 @@ addEvent(window, 'load', function () {
          }();
 
         (new Hotkey)
-            .add(qw('space enter'), function () { revolver.onSelect(); })
+            .add(qw('space enter'), function () {
+                revolver.onSelect(function (link /*, now*/) {
+                        link.style.color = '#ff8800';
+                        setTimeout(function () { document.location = link.href; }, 250);
+                });
+            })
             .add('j', function () { revolver.roll(1);  })
             .add('k', function () { revolver.roll(-1); })
             .add('h', function () { revolver.roll(3);  })
             .add('l', function () { revolver.roll(-3); })
             .add('g', function () { revolver.roll('top');  })
             .add('G', function () { revolver.roll('last'); })
-            .add("q", naviPreview)
+            .add('q', naviPreview)
         ;
 
 }, false);
