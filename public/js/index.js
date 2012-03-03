@@ -1,135 +1,130 @@
-function Revolver (data) {
-    this.focus        = data.focus || 0;
-    this.pitch        = data.pitch;
-    this.dom          = _dom = data.dom;
-    this.scroll       = data.scroll;
-    this.dom.listLast = tags(_dom.list, 'li').length - 1;
-
-    var that = this;
-    addEvent(window, 'resize', function () { that.__onResize__(); });
-
-    return this.__pos__(this.focus * this.pitch).__onResize__();
-}
+function Revolver () {}
 (function (rp) {
-    rp.__setBrowserWidth__ = function () {
-                    this.browserWidth = getBrowserWidth();
-                    return this;
+    rp.rewidth = function (doms, widthMargin) {
+                return function () {
+                            var _width = (getBrowserWidth() - (widthMargin * 2));
+
+                            foreach(doms, function (dom) {
+                                dom.style.width = _width + "px";
+                            });
+                };
     };
-    rp.__setWidth__ = function () {
-                    var dom      = this.dom,
-                        domWidth = this.browserWidth - (this.dom.widthMargin * 2);
-
-                    foreach(qw('list focus'), function (domid) {
-                        dom[domid].style.width = domWidth + 'px';
-                    });
-
-                    return this;
+    rp.pos = function (dom, defaultTop) {
+                return function (top) {
+                            dom.style.top = (defaultTop - top) + "px";
+                };
     };
-    rp.__onResize__ = function () {
-                    return this.__setBrowserWidth__().__setWidth__();
-    };
-    rp.__pos__ = function (_pos) {
-                    var _dom = this.dom;
+    rp.roll = function (domList, scrollConfig, _pos) {
+                var last = tags(domList, 'li').length - 1,
+                    lock = false;
 
-                    _pos = _pos || 0;
+                return function (getNextFocus, now) {
+                            if (! lock) {
+                                var next = getNextFocus(last);
 
-                    _dom.list.style.top = (_dom.defaultTop - _pos) + 'px';
+                                if (next < 0)    next = 0;
+                                if (next > last) next = last;
 
-                    return this;
-    };
+                                if (now !== next) {
+                                    var isUp   = (now > next) ? true : false,
+                                        start  = now  * scrollConfig.size,
+                                        finish = next * scrollConfig.size;
 
-    rp.roll = function (addFocus) {
-                    if (! this.scrollState) {
-                        var _focus = this.focus,
-                            last   = this.dom.listLast;
-
-                        if ((/^top$/i).test(addFocus)) {
-                            _focus = 0;
-                        } else if ((/^last$/i).test(addFocus)) {
-                            _focus = last;
-                        } else {
-                            _focus += addFocus;
-
-                            if (_focus > last) _focus = last;
-                            if (_focus < 0)    _focus = 0;
-                        }
-
-                        if (this.focus !== _focus) {
-                            var isUp   = (this.focus > _focus) ? true : false,
-                                start  = this.focus * this.pitch,
-                                finish = _focus     * this.pitch,
-                                that   = this;
-
-                            this.scrollState = setInterval(function () {
-                                if ((isUp) ? (start < finish) : (start > finish)) {
-                                    clearInterval(that.scrollState);
-                                    delete that.scrollState;
-                                    that.__pos__(finish);
-                                    return;
+                                    lock = setInterval(function () {
+                                        if ((isUp) ? (start < finish) : (start > finish)) {
+                                            clearInterval(lock);
+                                            lock = false;
+                                            _pos(finish);
+                                            return;
+                                        }
+                                        start = (isUp) ? (start - scrollConfig.pitch) : (start + scrollConfig.pitch);
+                                        _pos(start);
+                                    }, scrollConfig.interval);
+                                    now = next;
                                 }
-                                start = (isUp) ? (start - that.scroll.pitch) : (start + that.scroll.pitch);
-                                that.__pos__(start);
-                            }, this.scroll.interval);
+                            }
 
-                            this.focus = _focus;
-                        }
-                    }
-                    return this;
+                            return now;
+                };
     };
-    rp.fire = function (func) {
-                    var link = tags(this.dom.list, 'a')[this.focus];
+    rp.fire = function (domList) {
+                return function (now) {
+                            var link = tags(domList, 'a')[now];
 
-                    if ((! isUndefined(func)) && typeof func === 'function') {
-                        func(link, focus);
-                    } else {
-                        document.location = link.href;
-                    }
-
-                    return this;
+                            link.style.color = '#ffaa00';
+                            setTimeout(function () {
+                                document.location = link.href;
+                            }, 250);
+                };
     };
 })(Revolver.prototype);
 
+function setNow (_now) {
+    _now = (! isNumber(_now)) ? 0 : Number(_now);
+
+    return function (n) {
+        if (! isUndefined(n)) _now = n;
+        return _now;
+    };
+}
 
 addEvent(window, 'load', function () {
+// 変数の明示
+    var config, revolver, kb, _pos, _rewidth, _roll, _fire, _focus;
 
-        var revolver = new Revolver({
-            focus : 2,
-            pitch : 36,
-            dom   : {
-                list        : gid('main_ul'),
-                focus       : gid('focus'),
-                defaultTop  : (138 + 6),
-                widthMargin : (24 + 6)
-            },
-            scroll : {
-                pitch    : 6,
-                interval : 20
-            }
-        });
+// 設定
+    config = {
+        focus : 2,
+        doms : {
+            list : gid('main_ul'),
+            focus : gid('focus'),
+            defaultTop  : (138 + 6),
+            widthMargin : ( 24 + 6)
+        },
+        scroll : {
+            size        : 36,
+            pitch       :  6,
+            interval    : 25
+        }
+    };
+// 機能を提供するコレクションの呼び出し
+    revolver = new Revolver;
+// 作業する関数を設定
+    _focus   = setNow(config.focus);
+    _pos     = revolver.pos(config.doms.list, config.doms.defaultTop);
+    _roll    = revolver.roll(config.doms.list, config.scroll, _pos);
+    _fire    = revolver.fire(config.doms.list);
+    _rewidth = revolver.rewidth([config.doms.list, config.doms.focus], config.doms.widthMargin);
 
-        var naviPreview =  function () {
-                        var _on_off = false;
-                        return function () {
-                            gid('navi').style.display = (_on_off) ? 'block' : 'none';
-                            _on_off = (_on_off) ? false : true;
-                        };
-         }();
+// 初期セットアップ
+// domのセットアップ
+    _pos(_focus() * config.scroll.size);
+    _rewidth();
 
-        (new Hotkey)
-            .add(qw('space enter'), function () {
-                revolver.fire(function (link /*, now*/) {
-                        link.style.color = '#ff8800';
-                        setTimeout(function () { document.location = link.href; }, 250);
-                });
-            })
-            .add('j', function () { revolver.roll(1);  })
-            .add('k', function () { revolver.roll(-1); })
-            .add('h', function () { revolver.roll(3);  })
-            .add('l', function () { revolver.roll(-3); })
-            .add('g', function () { revolver.roll('top');  })
-            .add('G', function () { revolver.roll('last'); })
-            .add('q', naviPreview)
-        ;
+// イベントリスナーの作成
+    kb = new Hotkey;
+
+    kb.add(qw('space enter'), function () { _fire(_focus()); });
+    kb.add('j', function () {
+        _focus(_roll(function () { return _focus() + 1; }, _focus()));
+    });
+    kb.add('k', function () {
+        _focus(_roll(function () { return _focus() - 1; }, _focus()));
+    });
+    kb.add('h', function () {
+        _focus(_roll(function () { return _focus() + 3; }, _focus()));
+    });
+    kb.add('l', function () {
+        _focus(_roll(function () { return _focus() - 3; }, _focus()));
+    });
+    kb.add('g', function () {
+        _focus(_roll(function () { return 0; }, _focus()));
+    });
+    kb.add('G', function () {
+        _focus(_roll(function (last) { return last; }, _focus()));
+    });
+
+    addEvent(window, 'resize', _rewidth);
 
 }, false);
 
