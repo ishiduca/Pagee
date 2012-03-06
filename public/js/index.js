@@ -1,4 +1,9 @@
-function Revolver () {}
+// MVC model で強引に当てはめてみると
+// Model:      Focus
+// View:       Revolver
+// Controller: Hotkey, addEvent
+
+function RevolverTools () {}
 (function (rp) {
     rp.rewidth = function (doms, widthMargin) {
                 return function () {
@@ -14,17 +19,11 @@ function Revolver () {}
                             dom.style.top = (defaultTop - top) + "px";
                 };
     };
-    rp.roll = function (domList, scrollConfig, _pos) {
-                var last = tags(domList, 'li').length - 1,
-                    lock = false;
+    rp.roll = function (scrollConfig, _pos) {
+                var lock = false;
 
-                return function (getNextFocus, now) {
+                return function (now, next) {
                             if (! lock) {
-                                var next = getNextFocus(last);
-
-                                if (next < 0)    next = 0;
-                                if (next > last) next = last;
-
                                 if (now !== next) {
                                     var isUp   = (now > next) ? true : false,
                                         start  = now  * scrollConfig.size,
@@ -51,19 +50,29 @@ function Revolver () {}
                 return function (now) {
                             var link = tags(domList, 'a')[now];
 
-                            link.style.color = '#ffaa00';
+                            link.style.color = '#ff5500';
                             setTimeout(function () {
                                 document.location = link.href;
                             }, 250);
                 };
     };
-})(Revolver.prototype);
+})(RevolverTools.prototype);
 
-function setNow (_now) {
-    _now = (! isNumber(_now)) ? 0 : Number(_now);
+function setFocus (_now, _first, _last) {
+    _now   = (! isNumber(_now))   ? 0         : Number(_now);
+    _first = (! isNumber(_first)) ? undefined : Number(_first);
+    _last  = (! isNumber(_last))  ? undefined : Number(_last);
 
-    return function (n) {
-        if (! isUndefined(n)) _now = n;
+    return function (f) {
+        if (f && typeof f === 'function') {
+            var buf = f(_now, _first, _last);
+            if (isNumber(buf)) _now = Number(buf);
+        }
+
+        if (_now < _first) _now = _first;
+        if (_now > _last)  _now = _last;
+
+        console.log(_now);
         return _now;
     };
 }
@@ -88,11 +97,21 @@ addEvent(window, 'load', function () {
         }
     };
 // 機能を提供するコレクションの呼び出し
-    revolver = new Revolver;
+    revolver = new RevolverTools;
 // 作業する関数を設定
-    _focus   = setNow(config.focus);
+    _focus   = setFocus(config.focus, 0, (tags(config.doms.list, 'li').length - 1));
+
+    _focus.inc = function (n) {
+            return this(function (now, start, last) {
+                return (n === 'LAST')  ? last
+                     : (n === 'START') ? start
+                     : (isNumber(n))   ? (now + Number(n))
+                     :                   (now + 1);
+            });
+    };
+
     _pos     = revolver.pos(config.doms.list, config.doms.defaultTop);
-    _roll    = revolver.roll(config.doms.list, config.scroll, _pos);
+    _roll    = revolver.roll(config.scroll, _pos);
     _fire    = revolver.fire(config.doms.list);
     _rewidth = revolver.rewidth([config.doms.list, config.doms.focus], config.doms.widthMargin);
 
@@ -104,24 +123,19 @@ addEvent(window, 'load', function () {
 // イベントリスナーの作成
     kb = new Hotkey;
 
-    kb.add(qw('space enter'), function () { _fire(_focus()); });
-    kb.add('j', function () {
-        _focus(_roll(function () { return _focus() + 1; }, _focus()));
-    });
-    kb.add('k', function () {
-        _focus(_roll(function () { return _focus() - 1; }, _focus()));
-    });
-    kb.add('h', function () {
-        _focus(_roll(function () { return _focus() + 3; }, _focus()));
-    });
-    kb.add('l', function () {
-        _focus(_roll(function () { return _focus() - 3; }, _focus()));
-    });
-    kb.add('g', function () {
-        _focus(_roll(function () { return 0; }, _focus()));
-    });
-    kb.add('G', function () {
-        _focus(_roll(function (last) { return last; }, _focus()));
+    var keybind;
+
+    foreach([
+        qw('space enter'), function () { _fire(_focus()); },
+        'j', function () { _roll( _focus(), _focus.inc()   ); },
+        'k', function () { _roll( _focus(), _focus.inc(-1) ); },
+        'h', function () { _roll( _focus(), _focus.inc(3)  ); },
+        'l', function () { _roll( _focus(), _focus.inc(-3) ); },
+        'g', function () { _roll( _focus(), _focus.inc('START') ); },
+        'G', function () { _roll( _focus(), _focus.inc('LAST')  ); }
+    ], function (arg) {
+        if (keybind) kb.add(keybind, arg);
+        keybind = (keybind) ? undefined : arg;
     });
 
     addEvent(window, 'resize', _rewidth);
