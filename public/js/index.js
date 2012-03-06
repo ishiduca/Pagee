@@ -23,8 +23,7 @@ function RevolverTools () {}
                 var lock = false;
 
                 return function (now, next) {
-                            if (! lock) {
-                                if (now !== next) {
+                            if ((! lock) && now !== next) {
                                     var isUp   = (now > next) ? true : false,
                                         start  = now  * scrollConfig.size,
                                         finish = next * scrollConfig.size;
@@ -40,7 +39,6 @@ function RevolverTools () {}
                                         _pos(start);
                                     }, scrollConfig.interval);
                                     now = next;
-                                }
                             }
 
                             return now;
@@ -69,10 +67,10 @@ function setFocus (_now, _first, _last) {
             if (isNumber(buf)) _now = Number(buf);
         }
 
-        if (_now < _first) _now = _first;
-        if (_now > _last)  _now = _last;
+        if (isNumber(_first) && _now < _first) _now = _first;
+        if (isNumber(_last)  && _now > _last)  _now = _last;
 
-        console.log(_now);
+        //console.log(_now);
         return _now;
     };
 }
@@ -123,19 +121,10 @@ addEvent(window, 'load', function () {
 // イベントリスナーの作成
     kb = new Hotkey;
 
-    var keybind;
+    kb.add(qw('space enter'), function () { _fire(_focus()); });
 
-    foreach([
-        qw('space enter'), function () { _fire(_focus()); },
-        'j', function () { _roll( _focus(), _focus.inc()   ); },
-        'k', function () { _roll( _focus(), _focus.inc(-1) ); },
-        'h', function () { _roll( _focus(), _focus.inc(3)  ); },
-        'l', function () { _roll( _focus(), _focus.inc(-3) ); },
-        'g', function () { _roll( _focus(), _focus.inc('START') ); },
-        'G', function () { _roll( _focus(), _focus.inc('LAST')  ); }
-    ], function (arg) {
-        if (keybind) kb.add(keybind, arg);
-        keybind = (keybind) ? undefined : arg;
+    foreach([['j', 1 ], [ 'k', -1 ], [ 'h',  3 ], [ 'l', -3 ], [ 'g', 'START' ], [ 'G', 'LAST' ]], function (arg) {
+        kb.add(arg[0], function () { _roll(_focus(), _focus.inc(arg[1])); });
     });
 
     addEvent(window, 'resize', _rewidth);
