@@ -1,4 +1,4 @@
-function Pager () {}
+function PagerTools () {}
 (function (pp) {
     pp.resize = function (imgs) {
             var init = function (img, i) {
@@ -93,7 +93,7 @@ function Pager () {}
             };
 
     };
-})(Pager.prototype);
+})(PagerTools.prototype);
 
 
 addEvent(window, 'load', function () {
@@ -112,7 +112,7 @@ addEvent(window, 'load', function () {
         }
     };
 
-    pager = new Pager;
+    pager = new PagerTools;
 
     _resize = pager.resize(config.imgs);
     _paging = pager.paging(config.imgs, config.pagingFade);
