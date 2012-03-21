@@ -1,7 +1,8 @@
 package Pagee;
 use Dancer ':syntax';
 use utf8;
-use Encode qw(decode_utf8);
+use Encode      qw(decode_utf8);
+use URI::Escape qw(uri_escape_utf8);
 use File::Spec;
 
 our $VERSION = '0.01';
@@ -17,6 +18,10 @@ sub file_search {
     closedir $dh;
 }
 
+sub esc {
+    uri_escape_utf8 shift, "^/A-Za-z0-9\-_.";
+}
+
 
 get '/' => sub {
     my $images_dir = File::Spec->catdir('public', 'images');
@@ -28,7 +33,7 @@ get '/' => sub {
             my $dir_path = {};
 
             $path =~ s|^public/images||;
-            $dir_path->{href} = $path;
+            $dir_path->{href} = esc($path);
 
 
             $path =~ s|^/||;
@@ -62,7 +67,7 @@ get '/:name' => sub {
         my $path = shift;
         if (-f $path && $path =~ m{.+\.(jp(e)?g|png|gif)$}i) {
             $path =~ s/^public//;
-            push @images_path, $path;
+            push @images_path, esc($path);
         }
     }, $images_dir);
 
